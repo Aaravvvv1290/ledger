@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Ajay Traders Ledger</title>
+
+<style>
+body{
+    margin:0;
+    font-family:Arial;
+    background:#0f172a;
+    color:#e5e7eb;
+}
+
+h1{
+    text-align:center;
+    color:cyan;
+}
+
+.box{
+    width:92%;
+    margin:auto;
+    background:#1f2937;
+    padding:15px;
+    border-radius:10px;
+}
+
+input,select{
+    padding:8px;
+    margin:5px;
+    background:#111827;
+    color:white;
+    border:none;
+    border-radius:5px;
+}
+
+button{
+    padding:8px 12px;
+    background:cyan;
+    border:none;
+    cursor:pointer;
+    font-weight:bold;
+    margin:3px;
+    border-radius:5px;
+}
+
+button:hover{
+    background:#00bcd4;
+}
+
+table{
+    width:100%;
+    margin-top:15px;
+    border-collapse:collapse;
+}
+
+th,td{
+    padding:8px;
+    border-bottom:1px solid #333;
+    text-align:center;
+}
+
+.paid{color:lightgreen; cursor:pointer;}
+.unpaid{color:red; cursor:pointer;}
+.del{color:#ff4d4d; cursor:pointer;}
+.highlight{color:cyan;}
+
+#outputBox{
+    margin-top:15px;
+    background:#111827;
+    padding:15px;
+    border-radius:10px;
+    display:none;
+    white-space:pre-line;
+}
+
+.section{
+    margin-top:10px;
+    padding:10px;
+    background:#111827;
+    border-radius:8px;
+}
+</style>
+
+</head>
+
+<body>
+
+<h1>🧾 Ajay Traders Ledger</h1>
+
+<div class="box">
+
+<!-- ENTRY -->
+<select id="shop"></select>
+<select id="item"></select>
+
+<input id="qty" type="number" placeholder="Qty">
+<input id="price" type="number" placeholder="Price">
+
+<select id="status">
+<option>Unpaid</option>
+<option>Paid</option>
+</select>
+
+<button onclick="addEntry()">Add Entry</button>
+<button onclick="weeklyReport()">Weekly Report</button>
+<button onclick="generateBill()">Generate Bill</button>
+<button onclick="resetAll()" style="background:#ff4d4d;color:white;">RESET ALL</button>
+
+<div id="outputBox"></div>
+
+<!-- ADD SHOP / ITEM -->
+<div class="section">
+<input id="newShop" placeholder="Add Shop">
+<button onclick="addShop()">Add Shop</button>
+
+<input id="newItem" placeholder="Add Item">
+<button onclick="addItem()">Add Item</button>
+</div>
+
+<table>
+<thead>
+<tr>
+<th>Shop</th>
+<th>Item</th>
+<th>Qty</th>
+<th>Price</th>
+<th>Total</th>
+<th>Status</th>
+<th>Delete</th>
+</tr>
+</thead>
+
+<tbody id="tb"></tbody>
+</table>
+
+</div>
+
+<script>
+
+let data = JSON.parse(localStorage.getItem("ledger")) || [];
+let shops = JSON.parse(localStorage.getItem("shops")) || ["W Traders"];
+let items = JSON.parse(localStorage.getItem("items")) || ["Maida"];
+
+function save(){
+localStorage.setItem("ledger", JSON.stringify(data));
+localStorage.setItem("shops", JSON.stringify(shops));
+localStorage.setItem("items", JSON.stringify(items));
+}
+
+function load(){
+
+let s=document.getElementById("shop");
+let i=document.getElementById("item");
+
+s.innerHTML="";
+i.innerHTML="";
+
+shops.forEach(x=>s.add(new Option(x)));
+items.forEach(x=>i.add(new Option(x)));
+}
+
+function addShop(){
+if(newShop.value){
+shops.push(newShop.value);
+save();
+load();
+newShop.value="";
+}
+}
+
+function addItem(){
+if(newItem.value){
+items.push(newItem.value);
+save();
+load();
+newItem.value="";
+}
+}
+
+function addEntry(){
+
+let shop=document.getElementById("shop").value;
+let item=document.getElementById("item").value;
+let qty=parseFloat(document.getElementById("qty").value);
+let price=parseFloat(document.getElementById("price").value);
+let status=document.getElementById("status").value;
+
+if(!shop||!item||!qty||!price){
+alert("Fill all fields");
+return;
+}
+
+data.push({
+shop,item,qty,price,
+total:qty*price,
+status,
+date:new Date().toLocaleDateString()
+});
+
+save();
+render();
+}
+
+function toggle(i){
+data[i].status = data[i].status==="Paid"?"Unpaid":"Paid";
+save();
+render();
+}
+
+function del(i){
+data.splice(i,1);
+save();
+render();
+}
+
+function render(){
+
+let tb=document.getElementById("tb");
+tb.innerHTML="";
+
+data.forEach((e,i)=>{
+
+let cls=e.status==="Paid"?"paid":"unpaid";
+
+tb.innerHTML+=`
+<tr>
+<td class="highlight">${e.shop}</td>
+<td>${e.item}</td>
+<td>${e.qty}</td>
+<td>${e.price}</td>
+<td class="highlight">₹${e.total} (${e.price}×${e.qty})</td>
+<td class="${cls}" onclick="toggle(${i})">${e.status}</td>
+<td class="del" onclick="del(${i})">X</td>
+</tr>
+`;
+});
+}
+
+function weeklyReport(){
+
+let shop=document.getElementById("shop").value;
+let box=document.getElementById("outputBox");
+
+let list=data.filter(e=>e.shop===shop);
+
+let text="📊 Weekly Report - "+shop+"\n\n";
+
+list.forEach(e=>{
+text+=`${e.date} | ${e.item} | Qty:${e.qty} | ₹${e.total} | ${e.status}\n`;
+});
+
+box.style.display="block";
+box.innerText=text;
+}
+
+function generateBill(){
+
+let shop=document.getElementById("shop").value;
+let box=document.getElementById("outputBox");
+
+let list=data.filter(e=>e.shop===shop);
+
+let total=0;
+let text="🧾 BILL - "+shop+"\n\n";
+
+list.forEach(e=>{
+text+=`${e.item} | ${e.qty} x ${e.price} = ${e.total}\n`;
+total+=e.total;
+});
+
+text+="\nTOTAL: ₹"+total;
+
+box.style.display="block";
+box.innerText=text;
+}
+
+function resetAll(){
+
+let ok = confirm("⚠️ This will delete ALL data. Continue?");
+if(!ok) return;
+
+data = [];
+shops = ["W Traders"];
+items = ["Maida"];
+
+save();
+load();
+render();
+
+document.getElementById("outputBox").style.display="none";
+
+alert("Reset complete!");
+}
+
+load();
+render();
+
+</script>
+
+</body>
+</html>
